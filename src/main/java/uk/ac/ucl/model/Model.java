@@ -1,50 +1,105 @@
 package uk.ac.ucl.model;
 
-import java.io.Reader;
-import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVParser;
-import org.apache.commons.csv.CSVRecord;
 
 public class Model
 {
-  // The example code in this class should be replaced by your Model class code.
-  // The data should be stored in a suitable data structure.
+  private static Model instance = null;
+  private DataFrame dataFrame;
 
-  public List<String> getPatientNames()
+  /**
+   * Private constructor - prevents direct instantiation
+   */
+  private Model()
   {
-    return readFile("data/patients100.csv");
+    this.dataFrame = new DataFrame();
   }
 
-  // This method illustrates how to read csv data from a file.
-  // The data files are stored in the root directory of the project (the directory your project is in),
-  // in the directory named data.
-  public List<String> readFile(String fileName)
+  /**
+   * Gets the singleton instance of the Model
+   * Creates it if it doesn't exist
+   * @return the single Model instance
+   */
+  public static synchronized Model getInstance()
   {
-    List<String> data = new ArrayList<>();
-
-    try (Reader reader = new FileReader(fileName);
-         CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT))
+    if (instance == null)
     {
-      for (CSVRecord csvRecord : csvParser)
-      {
-        // The first row of the file contains the column headers, so is not actual data.
-        data.add(csvRecord.get(0));
-      }
-    } catch (IOException e)
-    {
-      e.printStackTrace();
+      instance = new Model();
     }
-    return data;
+    return instance;
   }
 
-  // This also returns dummy data. The real version should use the keyword parameter to search
-  // the data and return a list of matching items.
-  public List<String> searchFor(String keyword)
+  /**
+   * Loads patient data from a CSV file into the DataFrame
+   * @param filePath the path to the CSV file
+   * @throws IOException if the file cannot be read
+   */
+  public void loadData(String filePath) throws IOException
   {
-    return List.of("Search keyword is: "+ keyword, "result1", "result2", "result3");
+    DataLoader loader = new DataLoader();
+    this.dataFrame = loader.load(filePath);
+  }
+
+  /**
+   * Gets the DataFrame containing all data
+   * @return the DataFrame
+   */
+  public DataFrame getDataFrame()
+  {
+    return dataFrame;
+  }
+
+  /**
+   * Gets a list of patient names from the DataFrame
+   * @return a list of names from the FIRST column
+   */
+  public java.util.List<String> getPatientNames()
+  {
+    java.util.List<String> names = new java.util.ArrayList<>();
+    if (dataFrame.getRowCount() > 0)
+    {
+      for (int i = 0; i < dataFrame.getRowCount(); i++)
+      {
+        String firstName = dataFrame.getValue("FIRST", i);
+        String lastName = dataFrame.getValue("LAST", i);
+        if (firstName != null && lastName != null)
+        {
+          names.add(firstName + " " + lastName);
+        }
+      }
+    }
+    return names;
+  }
+
+  /**
+   * Searches for a keyword in the DataFrame
+   * @param keyword the search term
+   * @return a list of matching results
+   */
+  public java.util.List<String> searchFor(String keyword)
+  {
+    java.util.List<String> results = new java.util.ArrayList<>();
+
+    if (keyword == null || keyword.trim().isEmpty())
+    {
+      return results;
+    }
+
+    String searchTerm = keyword.toLowerCase();
+
+    // Search through all rows and columns
+    for (String columnName : dataFrame.getColumnNames())
+    {
+      for (int row = 0; row < dataFrame.getRowCount(); row++)
+      {
+        String value = dataFrame.getValue(columnName, row);
+        if (value != null && value.toLowerCase().contains(searchTerm))
+        {
+          results.add("Found in " + columnName + ": " + value);
+        }
+      }
+    }
+
+    return results;
   }
 }
