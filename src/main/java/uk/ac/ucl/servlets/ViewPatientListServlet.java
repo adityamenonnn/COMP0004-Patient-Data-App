@@ -47,7 +47,7 @@ public class ViewPatientListServlet extends HttpServlet
       List<String> patientNames = model.getPatientNames();
 
       // 3. Add the data to the request object.
-      // This makes the 'patientNames' list accessible to the JSP page for rendering.
+      // patientNames indices match DataFrame row indices, so pass rowCount for the JSP to build links.
       request.setAttribute("patientNames", patientNames);
 
       // 4. Invoke the JSP for display.

@@ -10,6 +10,35 @@
 <jsp:include page="/header.jsp"/>
 <div class="main">
   <h2>Patients:</h2>
+
+  <h3>Filter by City</h3>
+  <form method="GET" action="/filter">
+    <input type="hidden" name="type" value="city"/>
+    <input type="text" name="value" placeholder="Enter city"/>
+    <input type="submit" value="Search"/>
+  </form>
+
+  <h3>Filter by Gender</h3>
+  <form method="GET" action="/filter">
+    <input type="hidden" name="type" value="gender"/>
+    <select name="value">
+      <option value="M">Male</option>
+      <option value="F">Female</option>
+    </select>
+    <input type="submit" value="Search"/>
+  </form>
+
+  <h3>Filter by State</h3>
+  <form method="GET" action="/filter">
+    <input type="hidden" name="type" value="state"/>
+    <input type="text" name="value" placeholder="Enter state"/>
+    <input type="submit" value="Search"/>
+  </form>
+
+  <a href="/addPatient">Add New Patient</a> |
+  <a href="/exportJson">Download as JSON</a>
+
+  <h3>All Patients</h3>
   <%
     String errorMessage = (String) request.getAttribute("errorMessage");
     if (errorMessage != null)
@@ -24,11 +53,11 @@
       List<String> patients = (List<String>) request.getAttribute("patientNames");
       if (patients != null)
       {
-        for (String patient : patients)
+        for (int i = 0; i < patients.size(); i++)
         {
-          String href = "dummypage.html";
+          String href = "viewPatient?row=" + i;
     %>
-    <li><a href="<%=href%>"><%=patient%></a>
+    <li><a href="<%=href%>"><%=patients.get(i)%></a>
     </li>
     <%  }
       }
