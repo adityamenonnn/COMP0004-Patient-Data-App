@@ -1,3 +1,4 @@
+<%@ page import="uk.ac.ucl.model.PatientSnapshot" %>
 <%@ page import="java.util.Map" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 
@@ -21,15 +22,14 @@
     }
     else
     {
-      Map<String, String> patientData = (Map<String, String>) request.getAttribute("patientData");
-      Integer row = (Integer) request.getAttribute("row");
-      if (patientData != null)
+      PatientSnapshot patient = (PatientSnapshot) request.getAttribute("patient");
+      if (patient != null)
       {
   %>
   <form method="POST" action="/editPatient">
-    <input type="hidden" name="row" value="<%= row %>"/>
+    <input type="hidden" name="row" value="<%= patient.rowIndex() %>"/>
     <%
-      for (Map.Entry<String, String> entry : patientData.entrySet())
+      for (Map.Entry<String, String> entry : patient.data().entrySet())
       {
     %>
     <label><strong><%= entry.getKey() %></strong></label><br/>
@@ -39,14 +39,13 @@
     %>
     <input type="submit" value="Save Changes"/>
   </form>
+
+  <br>
+  <a href="/viewPatient?row=<%= patient.rowIndex() %>">Cancel</a>
   <%
       }
     }
   %>
-
-  <br>
-  <a href="/viewPatient?row=<%= request.getAttribute("row") %>">Cancel</a>
 </div>
-<jsp:include page="/footer.jsp"/>
 </body>
 </html>

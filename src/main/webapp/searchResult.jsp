@@ -1,3 +1,4 @@
+<%@ page import="uk.ac.ucl.model.PatientSnapshot" %>
 <%@ page import="java.util.List" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 
@@ -9,32 +10,52 @@
 <body>
 <jsp:include page="/header.jsp"/>
 <div class="main">
-  <h1>Search Result</h1>
+  <h2>Search Results</h2>
   <%
     String errorMessage = (String) request.getAttribute("errorMessage");
     if (errorMessage != null)
     {
   %>
-      <p style="color: red;"><%= errorMessage %></p>
+    <p style="color: red;"><%= errorMessage %></p>
   <%
     }
-    List<String> patients = (List<String>) request.getAttribute("result");
-    if (patients != null && patients.size() != 0)
+    else
     {
-    %>
+      List<PatientSnapshot> results = (List<PatientSnapshot>) request.getAttribute("results");
+      String mode = (String) request.getAttribute("mode");
+      if (results == null || results.isEmpty())
+      {
+  %>
+    <p>Nothing found.</p>
+  <%
+      }
+      else
+      {
+  %>
     <ul>
       <%
-        for (String patient : patients)
+        for (PatientSnapshot patient : results)
         {
+          String name = patient.data().get("FIRST") + " " + patient.data().get("LAST");
+          String href;
+          if ("edit".equals(mode))
+            href = "/editPatient?row=" + patient.rowIndex();
+          else if ("delete".equals(mode))
+            href = "/viewPatient?row=" + patient.rowIndex();
+          else
+            href = "/viewPatient?row=" + patient.rowIndex();
       %>
-      <li><%=patient%></li>
-     <% }
-    } else if (errorMessage == null)
-    {%>
-      <p>Nothing found</p>
-  <%}%>
-  </ul>
+      <li><a href="<%= href %>"><%= name %></a></li>
+      <%
+        }
+      %>
+    </ul>
+  <%
+      }
+    }
+  %>
+  <br>
+  <a href="/search.html">Search again</a>
 </div>
-<jsp:include page="/footer.jsp"/>
 </body>
 </html>

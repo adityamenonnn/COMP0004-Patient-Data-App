@@ -1,4 +1,6 @@
+<%@ page import="uk.ac.ucl.model.PatientSnapshot" %>
 <%@ page import="java.util.List" %>
+<%@ page import="java.util.Map" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 
 <html>
@@ -21,42 +23,28 @@
     }
     else
     {
-      String filterType = (String) request.getAttribute("filterType");
-      String filterValue = (String) request.getAttribute("filterValue");
-      List<String[]> results = (List<String[]>) request.getAttribute("results");
+      List<PatientSnapshot> results = (List<PatientSnapshot>) request.getAttribute("results");
+      Map<String, String> filters = (Map<String, String>) request.getAttribute("filters");
 
       if (results == null)
       {
   %>
-    <h3>Filter by City</h3>
-    <form method="GET" action="/filter">
-      <input type="hidden" name="type" value="city"/>
-      <input type="text" name="value" placeholder="Enter city"/>
-      <input type="submit" value="Search"/>
-    </form>
-
-    <h3>Filter by Gender</h3>
-    <form method="GET" action="/filter">
-      <input type="hidden" name="type" value="gender"/>
-      <select name="value">
-        <option value="M">Male</option>
-        <option value="F">Female</option>
-      </select>
-      <input type="submit" value="Search"/>
-    </form>
-
-    <h3>Filter by State</h3>
-    <form method="GET" action="/filter">
-      <input type="hidden" name="type" value="state"/>
-      <input type="text" name="value" placeholder="Enter state"/>
-      <input type="submit" value="Search"/>
-    </form>
+    <p>Use the filter options on the <a href="/patientList">patient list</a>.</p>
   <%
       }
       else
       {
+        StringBuilder summary = new StringBuilder();
+        for (Map.Entry<String, String> e : filters.entrySet())
+        {
+          if (e.getValue() != null && !e.getValue().trim().isEmpty())
+          {
+            if (summary.length() > 0) summary.append(", ");
+            summary.append(e.getKey()).append("=").append(e.getValue());
+          }
+        }
   %>
-    <h3>Results for <%= filterType %>: "<%= filterValue %>"</h3>
+    <h3>Results for: <%= summary %></h3>
     <%
       if (results.isEmpty())
       {
@@ -69,10 +57,11 @@
     %>
       <ul>
         <%
-          for (String[] patient : results)
+          for (PatientSnapshot patient : results)
           {
+            String name = patient.data().get("FIRST") + " " + patient.data().get("LAST");
         %>
-        <li><a href="/viewPatient?row=<%= patient[1] %>"><%= patient[0] %></a></li>
+        <li><a href="/viewPatient?row=<%= patient.rowIndex() %>"><%= name %></a></li>
         <%
           }
         %>
@@ -81,15 +70,11 @@
       }
     %>
     <br>
-    <a href="/filter">Back to Filters</a>
+    <a href="/patientList">Back to Patient List</a>
   <%
       }
     }
   %>
-
-  <br>
-  <a href="/patientList">Back to Patient List</a>
 </div>
-<jsp:include page="/footer.jsp"/>
 </body>
 </html>

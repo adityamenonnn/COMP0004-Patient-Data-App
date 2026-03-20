@@ -9,42 +9,49 @@
 <body>
 <jsp:include page="/header.jsp"/>
 <div class="main">
-  <h2>Patients:</h2>
+  <h2>Patients</h2>
 
-  <h3>Filter by City</h3>
-  <form method="GET" action="/filter">
-    <input type="hidden" name="type" value="city"/>
-    <input type="text" name="value" placeholder="Enter city"/>
-    <input type="submit" value="Search"/>
-  </form>
-
-  <h3>Filter by Gender</h3>
-  <form method="GET" action="/filter">
-    <input type="hidden" name="type" value="gender"/>
-    <select name="value">
-      <option value="M">Male</option>
-      <option value="F">Female</option>
-    </select>
-    <input type="submit" value="Search"/>
-  </form>
-
-  <h3>Filter by State</h3>
-  <form method="GET" action="/filter">
-    <input type="hidden" name="type" value="state"/>
-    <input type="text" name="value" placeholder="Enter state"/>
-    <input type="submit" value="Search"/>
-  </form>
-
-  <a href="/addPatient">Add New Patient</a> |
-  <a href="/exportJson">Download as JSON</a>
-
-  <h3>All Patients</h3>
   <%
     String errorMessage = (String) request.getAttribute("errorMessage");
     if (errorMessage != null)
     {
   %>
-      <p style="color: red;"><%= errorMessage %></p>
+    <p style="color: red;"><%= errorMessage %></p>
+  <%
+    }
+  %>
+
+  <button onclick="document.getElementById('filters').style.display = document.getElementById('filters').style.display === 'none' ? 'block' : 'none'">
+    Filter Patients
+  </button>
+
+  <div id="filters" style="display:none; margin-top: 10px;">
+    <form method="GET" action="/filter">
+      <label>City: <input type="text" name="city" placeholder="e.g. Boston"/></label>
+      <label>Gender:
+        <select name="gender">
+          <option value="">Any</option>
+          <option value="M">Male</option>
+          <option value="F">Female</option>
+        </select>
+      </label>
+      <label>State: <input type="text" name="state" placeholder="e.g. Massachusetts"/></label>
+      <input type="submit" value="Filter"/>
+    </form>
+  </div>
+
+  <%
+    String mode = (String) request.getAttribute("mode");
+    if ("edit".equals(mode))
+    {
+  %>
+    <p>Select a patient to edit:</p>
+  <%
+    }
+    else if ("delete".equals(mode))
+    {
+  %>
+    <p>Select a patient to delete:</p>
   <%
     }
   %>
@@ -55,15 +62,20 @@
       {
         for (int i = 0; i < patients.size(); i++)
         {
-          String href = "viewPatient?row=" + i;
+          String href;
+          if ("edit".equals(mode))
+            href = "editPatient?row=" + i;
+          else if ("delete".equals(mode))
+            href = "viewPatient?row=" + i;
+          else
+            href = "viewPatient?row=" + i;
     %>
-    <li><a href="<%=href%>"><%=patients.get(i)%></a>
-    </li>
-    <%  }
+    <li><a href="<%= href %>"><%= patients.get(i) %></a></li>
+    <%
+        }
       }
     %>
   </ul>
 </div>
-<jsp:include page="/footer.jsp"/>
 </body>
 </html>

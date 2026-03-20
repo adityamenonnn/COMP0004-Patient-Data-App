@@ -1,7 +1,8 @@
-
+<!DOCTYPE html>
 <html>
 <head>
   <title>Patient Data App</title>
+  <link rel="stylesheet" type="text/css" href="/styles.css"/>
 </head>
 <body>
 <div class="main">
@@ -9,8 +10,15 @@
   <h1>Search</h1>
   <form method="GET" action="/runsearch">
     <input type="text" name="searchstring" placeholder="Enter search keyword here"/>
+    <!-- Pass mode through so search results know whether to show edit/delete links -->
+    <input type="hidden" name="mode" id="modeField" value=""/>
     <input type="submit" value="Search"/>
   </form>
 </div>
+<script>
+  // Read mode from URL parameter and inject into the hidden form field.
+  var params = new URLSearchParams(window.location.search);
+  document.getElementById("modeField").value = params.get("mode") || "";
+</script>
 </body>
 </html>

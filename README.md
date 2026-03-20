@@ -1,58 +1,56 @@
-# WebAppExample
+# Hospital Patient Data Web Application
 
-A minimal Java web application intended for junior developers learning the basics of Java web apps, servlets, and JSPs. The app runs an embedded Tomcat server and serves static resources from `src/main/webapp`.
+## Section 1: Features 
 
-## Prerequisites
 
-- Java 25 (as configured in `pom.xml`)
-- Maven 3.9+
+**Core Data Model (Requirements 1-4):**
+- `Column`, `DataFrame`, `DataLoader`, and `Model` form the data layer, loading CSV data into an ordered in-memory structure managed by a singleton
 
-## Project Structure
+**Web Interface (Requirement 5):**
+- Pages for viewing the patient list, individual details, and filtered results, with a nav bar on every page
+- Dataset selector on the home page lets the user switch between the 100, 10,000, and 100,000 patient files at runtime without restarting the server.
+- Patient detail page has a toggle button to switch between a list view (field name next to its value) and a table view (Excel-style, column names as headers with values in a single row).
 
-- `src/main/java` — Java source code (including the embedded Tomcat bootstrap in `uk.ac.ucl.main.Main`)
-- `src/main/webapp` — Static web resources and JSPs
-- `target` — Build output (created by Maven)
-- `war-file` — Packaged WAR output (created by Maven)
+**Search (Requirement 6):**
+- Case-insensitive keyword search across all columns, with results linking directly to each patient's detail page
 
-## Compile
+**Filtering:**
+- The patient list has a combined filter form for city, gender, and state; any combination of the three fields can be used at once (AND logic), with blank fields ignored 
 
-Build the project and produce a WAR file:
+**Statistics (Requirement 7):**
+- Oldest and youngest living patient, age distribution in ten-year bands, and gender breakdown by count
 
-```bash
-mvn clean package
-```
+**Add, Edit, Delete (Requirement 8):**
+- Patients can be added, edited, and deleted; every mutation rewrites the CSV via `RecordWriter`
 
-This writes the WAR to `war-file/`.
+**JSON Export (Requirement 9):**
+- `JSONWriter` streams the full dataset to the browser as a downloadable JSON file
 
-## Run (Embedded Tomcat)
+**Charts (Requirement 10):**
+- `DataVisualiser` generates a horizontal bar chart (age distribution) and pie chart (gender breakdown) as server-side SVG
 
-First compile the project, then run the main class via Maven:
 
-```bash
-mvn clean compile exec:exec
-```
+## Section 2: Design Evaluation
 
-By default the server starts on port `8080`. Open:
+### Class Architecture
 
-```
-http://localhost:8080
-```
+The application follows a clean MVC architecture:
 
-## Configuration
+- **Model layer**: `Column`, `DataFrame`, `DataLoader`, `Model`, `PatientSearch`, `PatientStatistics`, `RecordWriter`, `JSONWriter`, `DataExporter`, `DataVisualiser`, and `PatientSnapshot` handle all data and business logic
+- **Controller layer**: Ten dedicated servlets each handle a single endpoint, coordinating the model and forwarding to the appropriate JSP
+- **View layer**: JSP pages contain only the Java code needed to display data, with no business logic
 
-You can configure the server using system properties or environment variables:
+The `Model` class was split into three focused classes once it exceeded ten methods. `Model` handles data loading and CRUD, `PatientSearch` handles keyword and field-based search, and `PatientStatistics` handles all statistical computations. This gives each class a single reason to change.
 
-- `SERVER_PORT` — Port to bind (default: `8080`)
-- `WEBAPP_DIR` — Web resources directory (default: `src/main/webapp/`)
-- `CLASSES_DIR` — Compiled classes directory (default: `target/classes`)
+### Object Oriented Design 
 
-Example (using environment variables):
+**Encapsulation:** All instance variables are private. The `Model` singleton is accessed only through `AppContext`, preventing direct instantiation elsewhere.
 
-```bash
-SERVER_PORT=9090 mvn clean compile exec:exec
-```
+**Cohesion:** Each class has a clear, focused responsibility. `DataLoader` only parses CSV input. `RecordWriter` only writes CSV output. `DataVisualiser` only produces SVG markup.
 
-## Notes for Learners
+**Use of Records:** `PatientSnapshot` is a Java record pairing a row index with its field data. This makes patient results immutable and removes boilerplate, while carrying the row index alongside the data so servlets and JSPs never need to track them separately.
 
-- The entry point is `uk.ac.ucl.main.Main` in `src/main/java/uk/ac/ucl/main/Main.java`.
-- Packaging as a WAR is useful if you want to deploy to an external Tomcat later.
+**Inheritance:** `DataExporter` is an abstract class defining a common `export(DataFrame, Writer)` contract. `RecordWriter` and `JSONWriter` both extend it, each providing their own implementation for CSV and JSON output respectively. So, either exporter can be used interchangeably wherever a `DataExporter` is expected.
+
+**Design Patterns:** The Singleton pattern is used in `Model` to ensure a single shared data source across all servlet requests. `AppContext` acts as the single access point to that instance.
+

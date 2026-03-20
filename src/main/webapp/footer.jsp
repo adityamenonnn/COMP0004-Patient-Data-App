@@ -1,6 +1,3 @@
-<div class="links">
-  <p>The footer</p>
+    <div class="links">
   <div class="clearBoth"></div>
 </div>
-
-

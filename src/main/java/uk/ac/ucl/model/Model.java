@@ -1,5 +1,7 @@
 package uk.ac.ucl.model;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -10,7 +12,7 @@ public class Model
 {
   private static Model instance = null;
   private DataFrame dataFrame;
-  private String filePath;
+  private String sourceFile;
 
   private Model()
   {
@@ -26,58 +28,24 @@ public class Model
     return instance;
   }
 
-  public void loadData(String filePath) throws IOException
+  public void initialiseFrom(String filePath) throws IOException
   {
-    this.dataFrame = new DataLoader().load(filePath);
-    this.filePath = filePath;
+    this.dataFrame= new DataLoader().parseCSV(filePath);
+    this.sourceFile =filePath;
   }
 
-  public DataFrame getDataFrame()
+  public DataFrame getFrame()
   {
     return dataFrame;
   }
 
-  public void addPatient(Map<String, String> data) throws IOException
+  public List<String> listPatientNames()
   {
-    for (String col : dataFrame.getColumnNames())
-    {
-      dataFrame.addValue(col, data.getOrDefault(col, ""));
-    }
-    persist();
-  }
-
-  public void updatePatient(int row, Map<String, String> data) throws IOException
-  {
-    for (String col : dataFrame.getColumnNames())
-    {
-      dataFrame.putValue(col, row, data.getOrDefault(col, ""));
-    }
-    persist();
-  }
-
-  public void deletePatient(int row) throws IOException
-  {
-    if (row < 0 || row >= dataFrame.getRowCount())
-    {
-      throw new IOException("Row index out of bounds: " + row);
-    }
-    dataFrame.removeRow(row);
-    persist();
-  }
-
-  // Writes current state back to disk after any mutation.
-  private void persist() throws IOException
-  {
-    new CSVWriter().save(dataFrame, filePath);
-  }
-
-  public List<String> getPatientNames()
-  {
-    List<String> names = new ArrayList<>();
+    List<String> names= new ArrayList<>();
     for (int i = 0; i < dataFrame.getRowCount(); i++)
     {
       String first = dataFrame.getValue("FIRST", i);
-      String last = dataFrame.getValue("LAST", i);
+      String last  = dataFrame.getValue("LAST", i);
       if (first != null && last != null)
       {
         names.add(first + " " + last);
@@ -86,141 +54,54 @@ public class Model
     return names;
   }
 
-  public Map<String, String> getPatientData(int row)
+  public PatientSnapshot fetchPatient(int rowIndex)
   {
-    if (row < 0 || row >= dataFrame.getRowCount())
+    if (rowIndex < 0 || rowIndex >= dataFrame.getRowCount())
     {
       return null;
     }
-    Map<String, String> data = new LinkedHashMap<>();
+    Map<String, String> fields = new LinkedHashMap<>();
     for (String col : dataFrame.getColumnNames())
     {
-      data.put(col, dataFrame.getValue(col, row));
+      fields.put(col, dataFrame.getValue(col, rowIndex));
     }
-    return data;
+    return new PatientSnapshot(rowIndex, fields);
   }
 
-  public String getOldestLivingPatient()
+  public void registerPatient(Map<String, String> incoming) throws IOException
   {
-    String name = null;
-    String earliest = null;
-
-    for (int i = 0; i < dataFrame.getRowCount(); i++)
-    {
-      String birthDate = livingPatientBirthDate(i);
-      if (birthDate == null) continue;
-
-      if (earliest == null || birthDate.compareTo(earliest) < 0)
-      {
-        earliest = birthDate;
-        name = fullName(i);
-      }
-    }
-    return name != null ? name + " (born " + earliest + ")" : "N/A";
-  }
-
-  public String getYoungestLivingPatient()
-  {
-    String name = null;
-    String latest = null;
-
-    for (int i = 0; i < dataFrame.getRowCount(); i++)
-    {
-      String birthDate = livingPatientBirthDate(i);
-      if (birthDate == null) continue;
-
-      if (latest == null || birthDate.compareTo(latest) > 0)
-      {
-        latest = birthDate;
-        name = fullName(i);
-      }
-    }
-    return name != null ? name + " (born " + latest + ")" : "N/A";
-  }
-
-  // BIRTHDATE is YYYY-MM-DD so lexicographic ordering works for date comparison.
-  // Returns null if the patient is deceased or has no birth date recorded.
-  private String livingPatientBirthDate(int row)
-  {
-    String deathDate = dataFrame.getValue("DEATHDATE", row);
-    if (deathDate != null && !deathDate.isEmpty()) return null;
-
-    String birthDate = dataFrame.getValue("BIRTHDATE", row);
-    if (birthDate == null || birthDate.isEmpty()) return null;
-
-    return birthDate;
-  }
-
-  public Map<String, Integer> getAgeDistribution()
-  {
-    // Initialise in display order so the map iterates 0-10 through 90+.
-    Map<String, Integer> buckets = new LinkedHashMap<>();
-    String[] labels = {"0-10", "10-20", "20-30", "30-40", "40-50", "50-60", "60-70", "70-80", "80-90", "90+"};
-    for (String label : labels) buckets.put(label, 0);
-
-    for (int i = 0; i < dataFrame.getRowCount(); i++)
-    {
-      String birthDate = livingPatientBirthDate(i);
-      if (birthDate == null) continue;
-
-      int age = 2026 - Integer.parseInt(birthDate.substring(0, 4));
-      String bucket = age >= 90 ? "90+" : ((age / 10) * 10) + "-" + ((age / 10) * 10 + 10);
-      buckets.put(bucket, buckets.get(bucket) + 1);
-    }
-    return buckets;
-  }
-
-  public List<String[]> getPatientsByCity(String city)
-  {
-    return filterByColumn("CITY", city);
-  }
-
-  public List<String[]> getPatientsByGender(String gender)
-  {
-    return filterByColumn("GENDER", gender);
-  }
-
-  public List<String[]> getPatientsByState(String state)
-  {
-    return filterByColumn("STATE", state);
-  }
-
-  private List<String[]> filterByColumn(String column, String value)
-  {
-    List<String[]> matches = new ArrayList<>();
-    for (int i = 0; i < dataFrame.getRowCount(); i++)
-    {
-      String cell = dataFrame.getValue(column, i);
-      if (value.equalsIgnoreCase(cell))
-      {
-        matches.add(new String[]{fullName(i), String.valueOf(i)});
-      }
-    }
-    return matches;
-  }
-
-  public List<String> searchFor(String keyword)
-  {
-    List<String> results = new ArrayList<>();
-    if (keyword == null || keyword.trim().isEmpty()) return results;
-
-    String term = keyword.toLowerCase();
     for (String col : dataFrame.getColumnNames())
     {
-      for (int row = 0; row < dataFrame.getRowCount(); row++)
-      {
-        String cell = dataFrame.getValue(col, row);
-        if (cell != null && cell.toLowerCase().contains(term))
-        {
-          results.add("Found in " + col + ": " + cell);
-        }
-      }
+      dataFrame.addValue(col, incoming.getOrDefault(col, ""));
     }
-    return results;
+    flushToDisk();
   }
 
-  private String fullName(int row)
+  public void amendPatient(int rowIndex, Map<String, String> incoming) throws IOException
   {
-    return dataFrame.getValue("FIRST", row) + " " + dataFrame.getValue("LAST", row);
+    for (String col : dataFrame.getColumnNames())
+    {
+      dataFrame.putValue(col, rowIndex, incoming.getOrDefault(col, ""));
+    }
+    flushToDisk();
+  }
+
+  public void removePatient(int rowIndex) throws IOException
+  {
+    if (rowIndex < 0 || rowIndex >= dataFrame.getRowCount())
+    {
+      throw new IOException("Row index out of bounds: " + rowIndex);
+    }
+    dataFrame.removeRow(rowIndex);
+    flushToDisk();
+  }
+
+  // Writes current in-memory state back to the original CSV after any mutation.
+  private void flushToDisk() throws IOException
+  {
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter(sourceFile)))
+    {
+      new RecordWriter().export(dataFrame, writer);
+    }
   }
 }

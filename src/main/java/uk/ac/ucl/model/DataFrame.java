@@ -21,7 +21,7 @@ public class DataFrame
     }
   }
 
-  public ArrayList<String> getColumnNames()
+  public List<String> getColumnNames()
   {
     return new ArrayList<>(columns.keySet());
   }
