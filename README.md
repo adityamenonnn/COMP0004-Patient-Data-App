@@ -1,56 +1,76 @@
 # Hospital Patient Data Web Application
 
-## Section 1: Features 
+A Java web application for managing hospital patient records, built with servlets and JSPs on embedded Tomcat. Supports CRUD operations, search, filtering, statistics, data visualisation, and JSON export across datasets of up to 100,000 patients.
 
+## Features
 
-**Core Data Model (Requirements 1-4):**
-- `Column`, `DataFrame`, `DataLoader`, and `Model` form the data layer, loading CSV data into an ordered in-memory structure managed by a singleton
+- **Dataset selection**: Switch between 100, 10,000, and 100,000 patient CSV files at runtime
+- **Patient list**: Browse all patients with combined filtering by city, gender, and state (AND logic)
+- **Patient detail**: View individual records in list or table layout (toggle between views)
+- **Search**: Case-insensitive keyword search across all columns
+- **Add, edit, delete**: Full CRUD with automatic CSV persistence via `RecordWriter`
+- **Statistics**: Oldest/youngest patient, age distribution in 10-year bands, gender breakdown
+- **Charts**: Server-side SVG bar chart (age distribution) and pie chart (gender breakdown) via `DataVisualiser`
+- **JSON export**: Download the full dataset as a JSON file
 
-**Web Interface (Requirement 5):**
-- Pages for viewing the patient list, individual details, and filtered results, with a nav bar on every page
-- Dataset selector on the home page lets the user switch between the 100, 10,000, and 100,000 patient files at runtime without restarting the server.
-- Patient detail page has a toggle button to switch between a list view (field name next to its value) and a table view (Excel-style, column names as headers with values in a single row).
+## Architecture
 
-**Search (Requirement 6):**
-- Case-insensitive keyword search across all columns, with results linking directly to each patient's detail page
+The application follows MVC with clean separation of concerns:
 
-**Filtering:**
-- The patient list has a combined filter form for city, gender, and state; any combination of the three fields can be used at once (AND logic), with blank fields ignored 
+```
+Model Layer          Controller Layer        View Layer
+-----------          ----------------        ----------
+Model (singleton)    10 Servlets             JSP pages
+PatientSearch        (one per endpoint)      (display only)
+PatientStatistics
+DataLoader / RecordWriter / JSONWriter
+DataVisualiser
+```
 
-**Statistics (Requirement 7):**
-- Oldest and youngest living patient, age distribution in ten-year bands, and gender breakdown by count
+### OOP Design
 
-**Add, Edit, Delete (Requirement 8):**
-- Patients can be added, edited, and deleted; every mutation rewrites the CSV via `RecordWriter`
+- **Singleton**: `Model` ensures a single shared data source across all requests, accessed via `AppContext`
+- **Encapsulation**: All instance variables are private
+- **Inheritance**: `DataExporter` is an abstract class; `RecordWriter` (CSV) and `JSONWriter` (JSON) extend it with their own `export()` implementations
+- **Records**: `PatientSnapshot` is a Java record pairing a row index with its field data (immutable, no boilerplate)
+- **Cohesion**: Each class has one responsibility (e.g. `DataLoader` only parses CSV, `DataVisualiser` only produces SVG)
 
-**JSON Export (Requirement 9):**
-- `JSONWriter` streams the full dataset to the browser as a downloadable JSON file
+## Project Structure
 
-**Charts (Requirement 10):**
-- `DataVisualiser` generates a horizontal bar chart (age distribution) and pie chart (gender breakdown) as server-side SVG
+```
+src/main/java/uk/ac/ucl/
+  main/Main.java                  -- Embedded Tomcat entry point
+  model/
+    Model.java                    -- Singleton data manager (CRUD + persistence)
+    DataFrame.java / Column.java  -- In-memory columnar data store
+    DataLoader.java               -- CSV parser
+    PatientSearch.java            -- Keyword and field-based search
+    PatientStatistics.java        -- Age/gender statistics
+    DataExporter.java             -- Abstract export contract
+    RecordWriter.java             -- CSV writer
+    JSONWriter.java               -- JSON writer
+    DataVisualiser.java           -- SVG chart generator
+    PatientSnapshot.java          -- Immutable record (row index + fields)
+  servlets/                       -- One servlet per endpoint
+src/main/webapp/                  -- JSP views + CSS
+data/                             -- Patient CSV files (100, 10K, 100K)
+```
 
+## Running
 
-## Section 2: Design Evaluation
+```bash
+# Build and run (requires Maven and Java 25)
+mvn clean package
+java -jar target/WebApp-1.3.jar
 
-### Class Architecture
+# Open in browser
+open http://localhost:8080
+```
 
-The application follows a clean MVC architecture:
+## Tech Stack
 
-- **Model layer**: `Column`, `DataFrame`, `DataLoader`, `Model`, `PatientSearch`, `PatientStatistics`, `RecordWriter`, `JSONWriter`, `DataExporter`, `DataVisualiser`, and `PatientSnapshot` handle all data and business logic
-- **Controller layer**: Ten dedicated servlets each handle a single endpoint, coordinating the model and forwarding to the appropriate JSP
-- **View layer**: JSP pages contain only the Java code needed to display data, with no business logic
-
-The `Model` class was split into three focused classes once it exceeded ten methods. `Model` handles data loading and CRUD, `PatientSearch` handles keyword and field-based search, and `PatientStatistics` handles all statistical computations. This gives each class a single reason to change.
-
-### Object Oriented Design 
-
-**Encapsulation:** All instance variables are private. The `Model` singleton is accessed only through `AppContext`, preventing direct instantiation elsewhere.
-
-**Cohesion:** Each class has a clear, focused responsibility. `DataLoader` only parses CSV input. `RecordWriter` only writes CSV output. `DataVisualiser` only produces SVG markup.
-
-**Use of Records:** `PatientSnapshot` is a Java record pairing a row index with its field data. This makes patient results immutable and removes boilerplate, while carrying the row index alongside the data so servlets and JSPs never need to track them separately.
-
-**Inheritance:** `DataExporter` is an abstract class defining a common `export(DataFrame, Writer)` contract. `RecordWriter` and `JSONWriter` both extend it, each providing their own implementation for CSV and JSON output respectively. So, either exporter can be used interchangeably wherever a `DataExporter` is expected.
-
-**Design Patterns:** The Singleton pattern is used in `Model` to ensure a single shared data source across all servlet requests. `AppContext` acts as the single access point to that instance.
-
+- **Java 25** with Jakarta Servlets
+- **Embedded Apache Tomcat 11**
+- **JSP** for server-side rendering
+- **Maven** for build management
+- No external dependencies beyond Tomcat and the Servlet/JSP APIs
